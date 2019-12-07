@@ -6,7 +6,7 @@ set(SOURCES
 	)
 set(HEADERS
 	share.h
-	logger.h
+	#logger.h
 	matrix.h
 	)
 set(DATA_FILES
