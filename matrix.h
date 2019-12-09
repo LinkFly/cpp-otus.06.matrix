@@ -12,11 +12,24 @@ class Matrix;
 
 template<typename T, int defval>
 struct MatrixIterator {
+	using RowIterator = typename Matrix<T, defval>::table::iterator;
+	using ColumnIterator = typename Matrix<T, defval>::row::iterator;
+	friend MatrixIterator<T, defval>;
+
 	MatrixIterator(Matrix<T, defval>* parent, unsigned row_idx, unsigned col_idx) :
-		parent{ parent }, cur_row{ row_idx }, cur_col{ col_idx } {}
+		parent{ parent }, cur_row{ row_idx }, cur_col{ col_idx } {
+		prow_iter = new RowIterator{};
+		pcol_iter = new ColumnIterator{};
+	}
+	MatrixIterator(Matrix<T, defval>* parent): MatrixIterator(parent, 0, 0) {}
 	T operator*() const {
 		return parent->get(cur_row, cur_col);
 	}
+	MatrixIterator(Matrix<T, defval>* parent, RowIterator& row_iter, ColumnIterator& col_iter) {
+		*prow_iter = row_iter;
+		*pcol_iter = col_iter;
+	}
+
 	bool operator==(const T& right) {
 		return parent->get(cur_row, cur_col) == right;
 	}
@@ -26,19 +39,84 @@ struct MatrixIterator {
 		return *this;
 	}
 
+	MatrixIterator& operator=(const MatrixIterator& iter) {
+		parent->add(cur_row, cur_col, *iter);
+		return *this;
+	}
+
 	auto find(unsigned key) {
 		return parent->data.find(key);
+	}
+	~MatrixIterator() {
+		delete prow_iter;
+		delete pcol_iter;
+	}
+
+	static MatrixIterator begin(Matrix<T, defval>* parent) {
+		assert(parent != nullptr);
+		auto row_iter = parent->data.begin();
+		if (row_iter != parent->data.end()) {
+			auto& fst_row = (*row_iter).second;
+			auto col_iter = fst_row.begin();
+			if (col_iter != fst_row.end()) {
+				return MatrixIterator { parent, row_iter, col_iter };
+			}
+		}
+		return end();
+	}
+
+	static MatrixIterator end() {
+		return MatrixIterator(nullptr);
+	}
+
+	MatrixIterator& operator++() {
+		if (parent == nullptr || prow_iter == nullptr) {
+			// is end iterator
+			parent = nullptr;
+		}
+		if (pcol_iter != nullptr) {
+			++(*pcol_iter);
+			if ((*pcol_iter) == (*(*prow_iter)).second.end()) {
+				pcol_iter = nullptr;
+			}
+		}
+		if (pcol_iter == nullptr) {
+			++(*prow_iter);
+			if (*prow_iter != parent->data.end()) {
+				(*pcol_iter) = (*(*prow_iter)).second.begin();
+			}
+			else {
+				// is end iterator
+				parent = nullptr;
+			}
+		}
+		return *this;
+	}
+
+	bool operator==(MatrixIterator& right) {
+		if (parent == right.parent) {
+			return (*prow_iter == *(right.prow_iter)) &&
+				(*pcol_iter == *(right.pcol_iter));
+		}
+		return false;
+	}
+	bool operator!=(MatrixIterator& right) {
+		return !operator==(right);
 	}
 
 private:
 	Matrix<T, defval>* parent;
 	unsigned cur_row;
 	unsigned cur_col;
+	RowIterator* prow_iter = nullptr;
+	ColumnIterator* pcol_iter = nullptr;
+	/*typename decltype(parent-::data[0])::iterator ColIter;*/
 };
 
 template<typename T, int defval>
 class Matrix {
 	using row = map<unsigned, T>;
+	using table = map<unsigned, row>;
 	using cur_iterator = MatrixIterator<T, defval>;
 	friend struct MatrixIterator<T, defval>;
 	map<unsigned, row> data;
@@ -113,7 +191,11 @@ public:
 		return part_iterator{ this, row_idx };
 	}
 
-	/*MatrixIterator& begin() {
-		return MatrixIterator{ this, 0, 0 };
-	}*/
+	cur_iterator begin() {
+		return cur_iterator::begin(this);
+	}
+	
+	cur_iterator end() {
+		return cur_iterator::end();
+	}
 };
