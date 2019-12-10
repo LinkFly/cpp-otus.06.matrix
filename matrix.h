@@ -153,7 +153,7 @@ class Matrix {
 	}
 
 public:
-	constexpr static decltype(defval) defval = defval;
+	constexpr static decltype(defval) def_value = defval;
 	struct part_iterator {
 		part_iterator(Matrix<T, defval>* parent, unsigned row_idx) :
 			parent{ parent }, cur_row{ row_idx } {}

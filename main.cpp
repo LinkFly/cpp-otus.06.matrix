@@ -33,7 +33,6 @@ int main() {
 		Matrix<int, -1> matrix; // бесконечная матрица int заполнена значениями -1
 		assert(matrix.size() == 0); // все ячейки свободны
 		auto a = matrix(0, 0);
-		cout << a << "!!!" << endl;
 		assert(a == -1);
 		assert(matrix.size() == 0);
 		matrix(100, 100) = 314;
@@ -47,7 +46,7 @@ int main() {
 
 	const int N = 10;
 	auto half_side = N / 2;
-	auto defval = decltype(m)::defval;
+	auto def_value = decltype(m)::def_value;
 
 	/* заполнить диагонали матрицы
 	выражением m[i][i] = m[N - 1 - i][i] = i; // N = 10, i = [0, N) */
@@ -64,8 +63,8 @@ int main() {
 	//	auto cur_row = i * 2;
 	//	for (int j = 0; j < half_side; j++) {
 	//		auto cur_col = j * 2;
-	//		m[cur_row][cur_col] = defval;
-	//		m[cur_row + 1][cur_col + 1] = defval;
+	//		m[cur_row][cur_col] = def_value;
+	//		m[cur_row + 1][cur_col + 1] = def_value;
 	//	}
 	//}
 
@@ -73,7 +72,7 @@ int main() {
 	то мы вполне можем просто стереть эту диагоняль, т.е. решить задачу за 10 итераций!!! */
 	for (int i = 0; i < N; i++) {
 		int j = N - 1 - i;
-		m[j][j] = defval;
+		m[j][j] = def_value;
 	}
 
 
