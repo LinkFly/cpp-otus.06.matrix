@@ -81,26 +81,32 @@ struct MatrixIterator {
 	}
 
 	MatrixIterator& operator++() {
-		if (parent == nullptr || prow_iter == nullptr) {
+		if (parent == nullptr || prow_iter == nullptr || (*prow_iter == parent->data.end())) {
 			// is end iterator
 			parent = nullptr;
+			return *this;
 		}
-		if (pcol_iter != nullptr) {
-			++(*pcol_iter);
+		auto fnMaybeResetPCol = [this]() {
 			if ((*pcol_iter) == (*(*prow_iter)).second.end()) {
 				delete pcol_iter;
 				pcol_iter = nullptr;
 			}
+		};
+		if (pcol_iter != nullptr) {
+			++(*pcol_iter);
+			fnMaybeResetPCol();
 		}
-		if (pcol_iter == nullptr) {
+		while (pcol_iter == nullptr) {
 			++(*prow_iter);
 			if (*prow_iter != parent->data.end()) {
 				pcol_iter = new ColumnIterator{};
 				(*pcol_iter) = (*(*prow_iter)).second.begin();
+				fnMaybeResetPCol();
 			}
 			else {
 				// is end iterator
 				parent = nullptr;
+				break;
 			}
 		}
 		return *this;
