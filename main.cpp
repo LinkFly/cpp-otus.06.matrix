@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <cassert>
+#include <tuple>
 
 #include "matrix.h"
 
@@ -10,7 +11,7 @@ using std::endl;
 
 template<typename T, int defval>
 std::ostream& operator<<(std::ostream& out, const MatrixIterator<T, defval>& iter) {
-	out << *iter;
+	out << std::get<1>(*iter);
 	return out;
 }
 
@@ -32,6 +33,7 @@ int main() {
 		Matrix<int, -1> matrix; // бесконечная матрица int заполнена значениями -1
 		assert(matrix.size() == 0); // все ячейки свободны
 		auto a = matrix(0, 0);
+		cout << a << "!!!" << endl;
 		assert(a == -1);
 		assert(matrix.size() == 0);
 		matrix(100, 100) = 314;
@@ -77,6 +79,7 @@ int main() {
 
 	/* Необходимо вывести фрагмент матрицы от [1,1] до [8,8]. Между столбцами пробел. Каждая строка матрицы
 	на новой строке. */
+	cout << "Matrix [1,1]:[8,8]\n";
 	for (int i = 1; i <= 8; i++) {
 		cout << m[i][1];
 		for (int j = 2; j <= 8; j++) {
@@ -85,15 +88,16 @@ int main() {
 		cout << endl;
 	}
 
-	cout << m.size() << endl;
+	/* Вывести количество занятых ячеек. */
+	cout << endl << "Matrix size: " << m.size() << endl;
 
-	//Matrix<int, 0> m1, m2, m3;
-	//m1[3][4] = m2[3][4] = 111;
-	//cout << m1[3][4] << " - " << m2[3][4] << endl;
-	for (auto elt : m) {
-		cout << elt;
+	/* Вывести все занятые ячейки вместе со своими позициями. */
+	cout << endl << "Matrix cells: \n";
+	for (auto elt_spec : m) {
+		auto [x, y] = std::get<0>(elt_spec);
+		auto elt = std::get<1>(elt_spec);
+		cout << x << ":" << y << " - " << elt << endl;
 	}
-
 
 	return 0;
 }

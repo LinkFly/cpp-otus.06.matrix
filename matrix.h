@@ -3,6 +3,7 @@
 #include "share.h"
 
 #include <map>
+#include <tuple>
 #include <iostream>
 
 using std::map;
@@ -18,16 +19,26 @@ struct MatrixIterator {
 
 	MatrixIterator(Matrix<T, defval>* parent, unsigned row_idx, unsigned col_idx) :
 		parent{ parent }, cur_row{ row_idx }, cur_col{ col_idx } {
-		prow_iter = new RowIterator{};
-		pcol_iter = new ColumnIterator{};
 	}
 	MatrixIterator(Matrix<T, defval>* parent): MatrixIterator(parent, 0, 0) {}
-	T operator*() const {
-		return parent->get(cur_row, cur_col);
-	}
-	MatrixIterator(Matrix<T, defval>* parent, RowIterator& row_iter, ColumnIterator& col_iter) {
+	MatrixIterator(Matrix<T, defval>* parent, RowIterator& row_iter, ColumnIterator& col_iter) : parent{ parent } {
+		prow_iter = new RowIterator{};
+		pcol_iter = new ColumnIterator{};
 		*prow_iter = row_iter;
 		*pcol_iter = col_iter;
+	}
+
+	std::tuple<std::tuple<unsigned, unsigned>, T> operator*() const {
+		if ((prow_iter != nullptr) && (pcol_iter != nullptr)) {
+			return std::make_tuple(
+				std::make_tuple((*prow_iter)->first, (*pcol_iter)->first),
+				(*pcol_iter)->second // use *->
+			);
+		}
+		return std::make_tuple(
+			std::make_tuple(cur_row, cur_col),
+			parent->get(cur_row, cur_col)
+		);
 	}
 
 	bool operator==(const T& right) {
@@ -40,7 +51,7 @@ struct MatrixIterator {
 	}
 
 	MatrixIterator& operator=(const MatrixIterator& iter) {
-		parent->add(cur_row, cur_col, *iter);
+		parent->add(cur_row, cur_col, std::get<1>(*iter)); // use *->
 		return *this;
 	}
 
@@ -77,12 +88,14 @@ struct MatrixIterator {
 		if (pcol_iter != nullptr) {
 			++(*pcol_iter);
 			if ((*pcol_iter) == (*(*prow_iter)).second.end()) {
+				delete pcol_iter;
 				pcol_iter = nullptr;
 			}
 		}
 		if (pcol_iter == nullptr) {
 			++(*prow_iter);
 			if (*prow_iter != parent->data.end()) {
+				pcol_iter = new ColumnIterator{};
 				(*pcol_iter) = (*(*prow_iter)).second.begin();
 			}
 			else {
@@ -95,8 +108,10 @@ struct MatrixIterator {
 
 	bool operator==(MatrixIterator& right) {
 		if (parent == right.parent) {
-			return (*prow_iter == *(right.prow_iter)) &&
-				(*pcol_iter == *(right.pcol_iter));
+			return parent == nullptr || (
+				(*prow_iter == *(right.prow_iter)) &&
+				(*pcol_iter == *(right.pcol_iter))
+			);
 		}
 		return false;
 	}
@@ -160,8 +175,13 @@ public:
 		if (getRow(row_idx, prow)) {
 			auto it = prow->find(col_idx);
 			if (it != prow->end()) {
-				it->second = elt;
-				elt == defval && length--;
+				if (elt != defval) {
+					it->second = elt;
+				}
+				else {
+					length--;
+					prow->erase(it);
+				}
 			}
 			else {
 				if (elt == defval) return;
