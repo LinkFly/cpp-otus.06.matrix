@@ -30,10 +30,19 @@ bool call_test(string name, std::function<bool(void)> fntest) {
 	return res;
 }
 
-bool test_matrix() {
+bool test_matrix_trivial() {
 	const int count = 10000;
+
 	return call_test(__PRETTY_FUNCTION__, []() {
-		
+		Matrix<int, -1> matrix; // бесконечная матрица int заполнена значениями -1
+		assert(matrix.size() == 0); // все ячейки свободны
+		auto a = matrix(0, 0);
+		assert(a == -1);
+		assert(matrix.size() == 0);
+		matrix(100, 100) = 314;
+		/*assert(matrix(100, 100) == 314);
+		assert(matrix.size() == 1);*/
+
 		return true;
 	});
 }
@@ -51,7 +60,7 @@ BOOST_AUTO_TEST_SUITE(allocator_test_suite)
 
 BOOST_AUTO_TEST_CASE(test_of_matrix)
 {
-	BOOST_CHECK(test_matrix());
+	BOOST_CHECK(test_matrix_trivial());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

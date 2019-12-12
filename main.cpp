@@ -4,29 +4,19 @@
 #include <cassert>
 #include <tuple>
 
+//tmp
+#include <map>
+using std::map;
+
 #include "matrix.h"
 
 using std::cout;
 using std::endl;
 
-template<typename T, int defval>
-std::ostream& operator<<(std::ostream& out, const MatrixIterator<T, defval>& iter) {
-	out << std::get<1>(*iter);
-	return out;
-}
-
 int main() {
-
-	//Matrix<int, 0> mm;
-	//MatrixIterator<int, 0> myit = mm(0, 0);
-	//auto it = myit.find(34);
-	///**myit;*/
-	//cout << myit << endl;
-
-	//Matrix<int, 0> mtx;
-	//auto it = mtx(0, 0);
-	//cout << (*it);
-	//return 0;
+	Matrix<int, 0> mm;
+	auto it = mm(0, 0);
+	cout << "trivial test: " << *it << endl;
 
 	/*Trivial checking code*/
 	{
@@ -74,7 +64,6 @@ int main() {
 		int j = N - 1 - i;
 		m[j][j] = def_value;
 	}
-
 
 	/* Необходимо вывести фрагмент матрицы от [1,1] до [8,8]. Между столбцами пробел. Каждая строка матрицы
 	на новой строке. */
