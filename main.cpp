@@ -14,22 +14,7 @@ using std::cout;
 using std::endl;
 
 int main() {
-	Matrix<int, 0> mm;
-	auto it = mm(0, 0);
-	cout << "trivial test: " << *it << endl;
-
-	/*Trivial checking code*/
-	{
-		Matrix<int, -1> matrix; // бесконечная матрица int заполнена значениями -1
-		assert(matrix.size() == 0); // все ячейки свободны
-		auto a = matrix(0, 0);
-		assert(a == -1);
-		assert(matrix.size() == 0);
-		matrix(100, 100) = 314;
-		assert(matrix(100, 100) == 314);
-		assert(matrix.size() == 1);
-	}
-	///////////////////
+	/* (trivial checking code see in tests) */
 
 	/* При запуске программы необходимо создать матрицу с пустым значением 0 */
 	Matrix<int, 0> m;
