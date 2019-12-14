@@ -5,6 +5,7 @@
 #include <map>
 #include <tuple>
 #include <iostream>
+#include <functional>
 
 using std::map;
 using std::tuple;
@@ -12,25 +13,36 @@ using std::tuple;
 template<typename T, int defval>
 class Matrix;
 
+class Flyweight {
+
+};
+
+template<typename T>
+class ValueFlyweight : public Flyweight {
+
+public:
+	T value;
+};
+
 // (extracted from Matrix for to define operator<< with it)
 template<typename T, int defval>
-class MatrixValue {
+class MatrixValueFlyweight: public ValueFlyweight<T> {
 	unsigned row;
 	unsigned col;
 	Matrix<T, defval>* parent;
 public:
-	MatrixValue(Matrix<T, defval>* parent, unsigned row, unsigned col) :
+	MatrixValueFlyweight(Matrix<T, defval>* parent, unsigned row, unsigned col) :
 		parent{ parent }, row{ row }, col{ col } {}
 
 	T operator*() const {
 		auto it = parent->data.find(tuple{ row, col });
 		return it != parent->data.end() ? it->second : defval;
 	}
-	MatrixValue<T, defval>& operator=(const T& val) {
+	MatrixValueFlyweight<T, defval>& operator=(const T& val) {
 		parent->add(row, col, val);
 		return *this;
 	}
-	MatrixValue<T, defval>& operator=(MatrixValue<T, defval>& iter) {
+	MatrixValueFlyweight<T, defval>& operator=(MatrixValueFlyweight<T, defval>& iter) {
 		return this->operator=(*iter);
 	}
 
@@ -39,8 +51,65 @@ public:
 	}
 };
 
+
+
+template<typename Key, typename Flyweight>
+class FlyweightFactory {
+	std::function<Flyweight(Key)> fnDoNotExist;
+protected:
+	map<Key, Flyweight> data;
+public:
+	// TODO using references into function (Flyweight&, Key&)
+	FlyweightFactory(std::function<tuple<Flyweight, bool>(Key)> fnDoNotExist) : fnDoNotExist{ fnDoNotExist } {}
+	T get(Key& key, bool* pis_find = nullptr) {
+		auto it = data.find(key);
+		if (it != data.end()) {
+			if (pis_find != nullptr) *pis_find = true;
+			return it->second;
+		}
+		if (pis_find != nullptr) *pis_find = false;
+		auto [val, isadd] = val_isadd = fnDoNotExist(key);
+		if (isadd) {
+			data[key] = val;
+		}
+		return val;
+	}
+};
+
+template<typename Key, typename Flyweight, int defval>
+class MatrixFlyweightFactory: FlyweightFactory<key, Flyweight> {
+private:
+	size_t length;
+	ValueFlyweight<int> def_value{ defval };
+public:
+	// TODO use references
+	MatrixFlyweightFactory() : FlyweightFactory{ [](Key key) {return tuple{def_value, false}; } }
+	{}
+	void add(Key& key, T& elt) {
+		bool is_finded;
+		auto it = data.find(key);
+		if (it != data.end()) {
+			if (it->second == defval) {
+				data.erase(it);
+				length--;
+			}
+			else {
+				it->second = elt;
+			}
+		}
+		else if (it == data.end()) {
+			if (elt == defval) {
+				return;
+			}
+			data[tuple{ row_idx, col_idx }] = elt;
+			length++;
+		}
+	}
+
+};
+
 template<typename T, int defval>
-std::ostream& operator<<(std::ostream& out, const MatrixValue<T, defval>& iter) {
+std::ostream& operator<<(std::ostream& out, const MatrixValueFlyweight<T, defval>& iter) {
 	out << (*iter);
 	return out;
 }
@@ -121,7 +190,7 @@ public:
 	};
 
 	friend class MatrixIterator<T, defval>;
-	friend class MatrixValue<T, defval>;
+	friend class MatrixValueFlyweight<T, defval>;
 	using CurIterator = MatrixIterator<T, defval>;
 
 	// For using matrix[x][y]
@@ -132,8 +201,8 @@ public:
 	public:
 		MatrixPartValue(Matrix<T, defval>* parent, unsigned row) :
 			parent{ parent }, row{ row } {}
-		MatrixValue<T, defval> operator[](unsigned col) {
-			return MatrixValue<T, defval>{ parent, row, col, };
+		MatrixValueFlyweight<T, defval> operator[](unsigned col) {
+			return MatrixValueFlyweight<T, defval>{ parent, row, col, };
 		}
 	};
 	//// end Helper classes
@@ -144,8 +213,8 @@ public:
 		return length;
 	}
 
-	MatrixValue<T, defval> operator()(unsigned row_idx, unsigned col_idx) {
-		return MatrixValue<T, defval>{ this, row_idx, col_idx };
+	MatrixValueFlyweight<T, defval> operator()(unsigned row_idx, unsigned col_idx) {
+		return MatrixValueFlyweight<T, defval>{ this, row_idx, col_idx };
 	}
 
 	MatrixPartValue<T> operator[](unsigned row_idx) {
