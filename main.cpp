@@ -17,11 +17,11 @@ int main() {
 	/* (trivial checking code see in tests) */
 
 	/* При запуске программы необходимо создать матрицу с пустым значением 0 */
-	Matrix<int, 0> m{};
+	const int def_value = 0;
+	Matrix<int, def_value> m{};
 
 	const int N = 10;
-	auto half_side = N / 2;
-	auto def_value = decltype(m)::def_value;
+	/*auto def_value = decltype(m)::def_value;*/
 
 	/* заполнить диагонали матрицы
 	выражением m[i][i] = m[N - 1 - i][i] = i; // N = 10, i = [0, N) */
@@ -34,6 +34,7 @@ int main() {
 	/* Начиная с ячейки [0, 0] в шахматном порядке заполнить матрицу 10x10 значением по умолчанию.
 	Заполнение в шахматном порядке заняло 25 итераций */
 	/* (ниже альтернативное, оптимизированное решение) */
+	//auto half_side = N / 2;
 	//for (int i = 0; i < half_side; i++) {
 	//	auto cur_row = i * 2;
 	//	for (int j = 0; j < half_side; j++) {

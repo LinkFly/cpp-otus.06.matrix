@@ -13,64 +13,40 @@ using std::tuple;
 template<typename T, int defval>
 class Matrix;
 
-template<typename T>
-struct Flyweight {
-	T value;
-};
-
-template<typename T>
-class ValueFlyweight : public Flyweight<T> {
-
-public:
-	bool operator==(const ValueFlyweight& right) {
-		return this->value == right.value;
-	}
-};
-
-// (extracted from Matrix for to define operator<< with it)
-template<typename T, int defval>
-class MatrixValueFlyweight: public ValueFlyweight<T> {
-	//unsigned row;
-	//unsigned col;
+template<typename T, T defval>
+class MatrixValueProxy {
+	unsigned row;
+	unsigned col;
 	Matrix<T, defval>* parent;
+	friend class MatrixValueProxy;
 public:
-	MatrixValueFlyweight() : MatrixValueFlyweight{ defval } {}
-	MatrixValueFlyweight(const T val, Matrix<T, defval>* parent = nullptr) : parent{ parent } {
-		value = val;
-	}
-	//MatrixValueFlyweight(Matrix<T, defval>* parent, unsigned row, unsigned col) :
-	//	parent{ parent }, row{ row }, col{ col } {}
-
+	MatrixValueProxy(Matrix<T, defval>* parent, unsigned row, unsigned col, T elt = defval) :
+		parent{ parent }, row{ row }, col{ col } {}
 	T operator*() const {
-		return value;
-		/*auto it = parent->data.find(tuple{ row, col });
-		return it != parent->data.end() ? it->second : defval;*/
+		return parent->get(row, col);
 	}
-	MatrixValueFlyweight<T, defval>& operator=(const T& val) {
-		/*parent->add(row, col, val);*/
-		value = val;
+	MatrixValueProxy<T, defval>& operator=(const T& val) {
+		parent->add(row, col, val);
 		return *this;
 	}
-	MatrixValueFlyweight<T, defval>& operator=(MatrixValueFlyweight<T, defval>& right) {
-		/*return this->operator=(*iter)*/;
-
-		return operator=(right.value);
+	MatrixValueProxy<T, defval>& operator=(MatrixValueProxy<T, defval>& right) {
+		return operator=(*right);
 	}
 
 	bool operator==(const T& right) {
-		/*return parent->get(row, col) == right;*/
-		return value == right.value;
+		return parent->get(row, col) == right;
 	}
 
-	//MatrixValueFlyweight<T, defval> operator T(T& val) {
-	//	return MatrixValueFlyweight{ val };
-	//}
-	bool operator==(const MatrixValueFlyweight& right) {
-		return this->value == right.value;
+	bool operator==(const MatrixValueProxy& right) {
+		return operator==(*right);
 	}
 };
 
-
+template<typename T, int defval>
+std::ostream& operator<<(std::ostream& out, const MatrixValueProxy<T, defval>& iter) {
+	out << (*iter);
+	return out;
+}
 
 template<typename Key, typename Flyweight>
 class FlyweightFactory {
@@ -78,6 +54,7 @@ class FlyweightFactory {
 protected:
 	map<Key, Flyweight> data;
 public:
+	using iterator = typename map<Key, Flyweight>::iterator;
 	// TODO using references into function (Flyweight&, Key&)
 	FlyweightFactory(std::function<tuple<Flyweight, bool>(Key)> fnDoNotExist) : fnDoNotExist{ fnDoNotExist } {}
 	Flyweight get(Key& key, bool* pis_find = nullptr) {
@@ -87,26 +64,34 @@ public:
 			return it->second;
 		}
 		if (pis_find != nullptr) *pis_find = false;
-		auto [val, isadd] = val_isadd = fnDoNotExist(key);
+		auto [val, isadd] = fnDoNotExist(key);
 		if (isadd) {
 			data[key] = val;
 		}
 		return val;
 	}
+	//FlyweightFactory~() {
+	//	for (auto it : data) {
+	//		delete it->second;
+	//	}
+	//}
 };
 
 template<typename Key, typename Flyweight>
 class FlyweightFactoryEx: public FlyweightFactory<Key, Flyweight> {
 private:
-	size_t length;
+	size_t length = 0;
 	Flyweight* pdef_fly_val;
 public:
+	/*map<Key, Flyweight> data;*/
+	/*FlyweightFactoryEx() : FlyweightFactory{ [&defval](Key key) {return tuple{defval, false}; } }
+	{}*/
 	// TODO use references
 	FlyweightFactoryEx(Flyweight& defval) :
-		FlyweightFactory{ [&defval](Key key) {return tuple{defval, false}; } },
+		FlyweightFactory{ [&defval](Key key) {return tuple{defval, true}; } },
 		pdef_fly_val{ &defval }
 	{}
-	void add(Key& key, Flyweight& elt) {
+	/*void add(Key& key, Flyweight& elt) {
 		auto it = data.find(key);
 		if (it != data.end()) {
 			if (it->second == *pdef_fly_val) {
@@ -124,107 +109,120 @@ public:
 			data[key] = elt;
 			length++;
 		}
+	}*/
+};
+
+using Key = tuple<unsigned, unsigned>;
+
+template<typename T, int defval>
+struct MatrixFlyweightFactory {
+	Matrix<T, defval>* parent;
+	using Key = tuple<unsigned, unsigned>;
+	using MapProxies = map<Key, MatrixValueProxy<T, defval>>;
+	MapProxies data;
+public:
+	MatrixFlyweightFactory(Matrix<T, defval>* parent) : parent{ parent } {}
+	using iterator = typename MapProxies::iterator;
+	// TODO using references into function (Flyweight&, Key&)
+	MatrixValueProxy<T, defval>& get(Key& key) {
+		auto it = data.find(key);
+		if (it != data.end()) {
+			return it->second;
+		}
+		auto new_proxy = new MatrixValueProxy{ parent, std::get<0>(key), std::get<1>(key) };
+		data[key] = *new_proxy;
+		return *new_proxy;
+	}
+	~MatrixFlyweightFactory() {
+		for (auto it : data) {
+			delete &it.second;
+		}
+	}
+	auto begin() { return data.begin(); }
+	auto end() { return data.end(); }
+};
+
+template<typename T, int defval>
+class MatrixIterator {
+	friend MatrixIterator<T, defval>;
+
+	Matrix<T, defval>* parent;
+	using LowIterator = typename Matrix<T, defval>::iterator;
+	LowIterator it;
+public:
+	MatrixIterator(Matrix<T, defval>* parent) :
+		parent{ parent } {
+		if (parent != nullptr) {
+			it = parent->data.begin();
+			if (it == parent->data.end())
+				parent = nullptr;
+		}
+	}
+	static MatrixIterator begin(Matrix<T, defval>* parent) {
+		return MatrixIterator{ parent };
+	}
+	static MatrixIterator end() {
+		return MatrixIterator(nullptr);
+	}
+
+	std::tuple<std::tuple<unsigned, unsigned>, T> operator*() const {
+		auto [key, val] = *it;
+		return tuple{ key, val };
+	}
+
+	bool operator==(const T& right) {
+		return *it == right;
+	}
+
+	MatrixIterator& operator=(const T& val) {
+		if (it == end()) {
+			// TODO test throw
+			throw "Out of bound";
+		}
+		*it = val;
+		return *this;
+	}
+
+	MatrixIterator& operator=(const MatrixIterator& iter) {
+		return this->operator*(*iter);
+	}
+
+	MatrixIterator& operator++() {
+		if (parent != nullptr) {
+			++it;
+			if (it == parent->data.end()) {
+				parent = nullptr;
+			}
+		}
+		return *this;
+	}
+
+	bool operator==(MatrixIterator& right) {
+		if (parent == right.parent) {
+			return parent == nullptr || it == right.it;
+		}
+		return false;
+	}
+
+	bool operator!=(MatrixIterator& right) {
+		return !operator==(right);
 	}
 };
-
-template<typename T, int defval>
-struct MatrixFlyweightFactory : public FlyweightFactoryEx<
-	tuple<unsigned, unsigned>,
-	MatrixValueFlyweight<T, defval>
-> {
-	using iterator = typename decltype(data)::iterator;
-	MatrixFlyweightFactory() : FlyweightFactoryEx{ MatrixValueFlyweight<T, defval>{defval} }
-	{}
-	iterator begin() { return data.begin(); }
-	iterator end() { return data.end(); }
-};
-
-template<typename T, int defval>
-std::ostream& operator<<(std::ostream& out, const MatrixValueFlyweight<T, defval>& iter) {
-	out << (*iter);
-	return out;
-}
 
 template<typename T, int defval>
 class Matrix {
 	map<tuple<unsigned, unsigned>, T> data;
 	size_t length = 0;
-	MatrixFlyweightFactory<T, defval> mtx_fly_factory;
-	
+	MatrixFlyweightFactory<T, defval> mtx_fly_factory;	
 public:
-	using iterator = typename decltype(mtx_fly_factory)::iterator;
+	using iterator = typename map<tuple<unsigned, unsigned>, T>::iterator;
 	//// Helper classes
-	template<typename T, int defval>
-	class MatrixIterator {
-		friend MatrixIterator<T, defval>;
-
-		Matrix<T, defval>* parent;
-		using LowIterator = typename Matrix<T, defval>::iterator;
-		LowIterator it;
-	public:
-		MatrixIterator(Matrix<T, defval>* parent) : 
-			parent{ parent } {
-			if (parent != nullptr) {
-				it = parent->mtx_fly_factory.begin();
-				if (it == parent->mtx_fly_factory.end())
-					parent = nullptr;
-			}
-		}
-		static MatrixIterator begin(Matrix<T, defval>* parent) {
-			return MatrixIterator{ parent };
-		}
-		static MatrixIterator end() {
-			return MatrixIterator(nullptr);
-		}
-
-		std::tuple<std::tuple<unsigned, unsigned>, T> operator*() const {
-			auto [key, val] = *it;
-			return tuple{ key, val.value };
-		}
-
-		bool operator==(const T& right) {
-			return *it == right;
-		}
-
-		MatrixIterator& operator=(const T& val) {
-			if (it == end()) {
-				// TODO test throw
-				throw "Out of bound";
-			}
-			*it = val;
-			return *this;
-		}
-
-		MatrixIterator& operator=(const MatrixIterator& iter) {
-			return this->operator*(*iter);
-		}
-
-		MatrixIterator& operator++() {
-			if (parent != nullptr) {
-				++it;
-				if (it == parent->mtx_fly_factory.end()) {
-					parent = nullptr;
-				}
-			}
-			return *this;
-		}
-
-		bool operator==(MatrixIterator& right) {
-			if (parent == right.parent) {
-				return parent == nullptr || it == right.it;
-			}
-			return false;
-		}
-
-		bool operator!=(MatrixIterator& right) {
-			return !operator==(right);
-		}
-	};
+	
 
 	friend class MatrixIterator<T, defval>;
-	friend class MatrixValueFlyweight<T, defval>;
+	friend class MatrixValueProxy<T, defval>;
 	using CurIterator = MatrixIterator<T, defval>;
-	using ValueType = MatrixValueFlyweight<T, defval>;
+	using ValueProxyType = MatrixValueProxy<T, defval>;
 
 	// For using matrix[x][y]
 	template<typename T>
@@ -234,25 +232,22 @@ public:
 	public:
 		MatrixPartValue(Matrix<T, defval>* parent, unsigned row) :
 			parent{ parent }, row{ row } {}
-		//MatrixValueFlyweight<T, defval> operator[](unsigned col) {
-		//	return MatrixValueFlyweight<T, defval>{ parent, row, col, };
-		//}
-		MatrixValueFlyweight<T, defval> operator[](unsigned col) {
-			return MatrixValueFlyweight<T, defval>{};
+		MatrixValueProxy<T, defval> operator[](unsigned col) {
+			return MatrixValueProxy<T, defval>{ parent, row, col, };
 		}
 	};
 	//// end Helper classes
 
 	constexpr static decltype(defval) def_value = defval;
 
-	Matrix() {}
+	Matrix() : mtx_fly_factory{ this } {}
 
 	size_t size() {
 		return length;
 	}
 
-	MatrixValueFlyweight<T, defval> operator()(unsigned row_idx, unsigned col_idx) {
-		return MatrixValueFlyweight<T, defval>{ this, row_idx, col_idx };
+	MatrixValueProxy<T, defval> operator()(unsigned row_idx, unsigned col_idx) {
+		return MatrixValueProxy<T, defval>{ this, row_idx, col_idx };
 	}
 
 	MatrixPartValue<T> operator[](unsigned row_idx) {
@@ -269,13 +264,10 @@ public:
 
 private:
 	//mtx_fly_factory
-	ValueType get(unsigned row_idx, unsigned col_idx) {
+	ValueProxyType get_val_proxy(unsigned row_idx, unsigned col_idx) {
 		return mtx_fly_factory.get(tuple{ row_idx, col_idx });
 	}
-	void add(unsigned row_idx, unsigned col_idx, const T& elt) {
-		mtx_fly_factory.add(tuple{ row_idx, col_idx }, ValueType( elt ));
-	}
-	/*T get(unsigned row_idx, unsigned col_idx) {
+	T get(unsigned row_idx, unsigned col_idx) {
 		auto it = data.find(tuple{ row_idx, col_idx });
 		if (it != data.end()) {
 			return it->second;
@@ -300,6 +292,6 @@ private:
 			data[tuple{ row_idx, col_idx }] = elt;
 			length++;
 		}
-	}*/
+	}
 };
 
