@@ -149,8 +149,8 @@ public:
 
 	// For using matrix[x][y]
 	class MatrixPartValue {
-		unsigned row;
 		Matrix<T, defval>* parent;
+		unsigned row;
 	public:
 		MatrixPartValue(Matrix<T, defval>* parent, unsigned row) :
 			parent{ parent }, row{ row } {}
