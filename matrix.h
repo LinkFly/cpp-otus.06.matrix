@@ -51,22 +51,22 @@ template<typename T, int defval>
 struct MatrixFlyweightFactory {
 	Matrix<T, defval>* parent;
 	using Key = tuple<unsigned, unsigned>;
-	using MapProxies = map<Key, MatrixValueProxy<T, defval>>;
+	using MapProxies = map<Key, MatrixValueProxy<T, defval>*>;
 	MapProxies data;
 public:
 	MatrixFlyweightFactory(Matrix<T, defval>* parent) : parent{ parent } {}
 	MatrixValueProxy<T, defval>& get(Key& key) {
 		auto it = data.find(key);
 		if (it != data.end()) {
-			return it->second;
+			return *it->second;
 		}
 		auto new_proxy = new MatrixValueProxy{ parent, std::get<0>(key), std::get<1>(key) };
-		data[key] = *new_proxy;
+		data.insert(it, { key, new_proxy });
 		return *new_proxy;
 	}
 	~MatrixFlyweightFactory() {
 		for (auto it : data) {
-			delete &it.second;
+			delete it.second;
 		}
 	}
 };
@@ -155,7 +155,8 @@ public:
 		MatrixPartValue(Matrix<T, defval>* parent, unsigned row) :
 			parent{ parent }, row{ row } {}
 		MatrixValueProxy<T, defval> operator[](unsigned col) {
-			return MatrixValueProxy<T, defval>{ parent, row, col, };
+			/*return MatrixValueProxy<T, defval>{ parent, row, col, };*/
+			return parent->get_val_proxy(row, col);
 		}
 	};
 
@@ -166,7 +167,8 @@ public:
 	}
 
 	MatrixValueProxy<T, defval> operator()(unsigned row_idx, unsigned col_idx) {
-		return MatrixValueProxy<T, defval>{ this, row_idx, col_idx };
+		/*return MatrixValueProxy<T, defval>{ this, row_idx, col_idx };*/
+		return get_val_proxy(row_idx, col_idx);
 	}
 
 	MatrixPartValue operator[](unsigned row_idx) {
@@ -208,7 +210,7 @@ private:
 			if (elt == defval) {
 				return;
 			}
-			data[tuple{ row_idx, col_idx }] = elt;
+			data.insert(it, { tuple{row_idx, col_idx}, elt });
 			length++;
 		}
 	}
