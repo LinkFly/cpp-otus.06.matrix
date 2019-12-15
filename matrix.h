@@ -148,7 +148,6 @@ public:
 	using ValueProxyType = MatrixValueProxy<T, defval>;
 
 	// For using matrix[x][y]
-	template<typename T>
 	class MatrixPartValue {
 		unsigned row;
 		Matrix<T, defval>* parent;
@@ -170,8 +169,8 @@ public:
 		return MatrixValueProxy<T, defval>{ this, row_idx, col_idx };
 	}
 
-	MatrixPartValue<T> operator[](unsigned row_idx) {
-		return MatrixPartValue<T>{ this, row_idx };
+	MatrixPartValue operator[](unsigned row_idx) {
+		return MatrixPartValue{ this, row_idx };
 	}
 
 	CurIterator begin() {
