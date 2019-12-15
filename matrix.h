@@ -18,9 +18,8 @@ class MatrixValueProxy {
 	unsigned row;
 	unsigned col;
 	Matrix<T, defval>* parent;
-	friend class MatrixValueProxy;
 public:
-	MatrixValueProxy(Matrix<T, defval>* parent, unsigned row, unsigned col, T elt = defval) :
+	MatrixValueProxy(Matrix<T, defval>* parent, unsigned row, unsigned col) :
 		parent{ parent }, row{ row }, col{ col } {}
 	T operator*() const {
 		return parent->get(row, col);
@@ -48,72 +47,6 @@ std::ostream& operator<<(std::ostream& out, const MatrixValueProxy<T, defval>& i
 	return out;
 }
 
-template<typename Key, typename Flyweight>
-class FlyweightFactory {
-	std::function<tuple<Flyweight, bool>(Key)> fnDoNotExist;
-protected:
-	map<Key, Flyweight> data;
-public:
-	using iterator = typename map<Key, Flyweight>::iterator;
-	// TODO using references into function (Flyweight&, Key&)
-	FlyweightFactory(std::function<tuple<Flyweight, bool>(Key)> fnDoNotExist) : fnDoNotExist{ fnDoNotExist } {}
-	Flyweight get(Key& key, bool* pis_find = nullptr) {
-		auto it = data.find(key);
-		if (it != data.end()) {
-			if (pis_find != nullptr) *pis_find = true;
-			return it->second;
-		}
-		if (pis_find != nullptr) *pis_find = false;
-		auto [val, isadd] = fnDoNotExist(key);
-		if (isadd) {
-			data[key] = val;
-		}
-		return val;
-	}
-	//FlyweightFactory~() {
-	//	for (auto it : data) {
-	//		delete it->second;
-	//	}
-	//}
-};
-
-template<typename Key, typename Flyweight>
-class FlyweightFactoryEx: public FlyweightFactory<Key, Flyweight> {
-private:
-	size_t length = 0;
-	Flyweight* pdef_fly_val;
-public:
-	/*map<Key, Flyweight> data;*/
-	/*FlyweightFactoryEx() : FlyweightFactory{ [&defval](Key key) {return tuple{defval, false}; } }
-	{}*/
-	// TODO use references
-	FlyweightFactoryEx(Flyweight& defval) :
-		FlyweightFactory{ [&defval](Key key) {return tuple{defval, true}; } },
-		pdef_fly_val{ &defval }
-	{}
-	/*void add(Key& key, Flyweight& elt) {
-		auto it = data.find(key);
-		if (it != data.end()) {
-			if (it->second == *pdef_fly_val) {
-				data.erase(it);
-				length--;
-			}
-			else {
-				it->second = elt;
-			}
-		}
-		else if (it == data.end()) {
-			if (elt == *pdef_fly_val) {
-				return;
-			}
-			data[key] = elt;
-			length++;
-		}
-	}*/
-};
-
-using Key = tuple<unsigned, unsigned>;
-
 template<typename T, int defval>
 struct MatrixFlyweightFactory {
 	Matrix<T, defval>* parent;
@@ -122,8 +55,6 @@ struct MatrixFlyweightFactory {
 	MapProxies data;
 public:
 	MatrixFlyweightFactory(Matrix<T, defval>* parent) : parent{ parent } {}
-	using iterator = typename MapProxies::iterator;
-	// TODO using references into function (Flyweight&, Key&)
 	MatrixValueProxy<T, defval>& get(Key& key) {
 		auto it = data.find(key);
 		if (it != data.end()) {
@@ -138,20 +69,15 @@ public:
 			delete &it.second;
 		}
 	}
-	auto begin() { return data.begin(); }
-	auto end() { return data.end(); }
 };
 
 template<typename T, int defval>
 class MatrixIterator {
-	friend MatrixIterator<T, defval>;
-
 	Matrix<T, defval>* parent;
 	using LowIterator = typename Matrix<T, defval>::iterator;
 	LowIterator it;
 public:
-	MatrixIterator(Matrix<T, defval>* parent) :
-		parent{ parent } {
+	MatrixIterator(Matrix<T, defval>* parent) : parent{ parent } {
 		if (parent != nullptr) {
 			it = parent->data.begin();
 			if (it == parent->data.end())
@@ -184,7 +110,7 @@ public:
 	}
 
 	MatrixIterator& operator=(const MatrixIterator& iter) {
-		return this->operator*(*iter);
+		return this->operator=(*iter);
 	}
 
 	MatrixIterator& operator++() {
@@ -215,12 +141,9 @@ class Matrix {
 	size_t length = 0;
 	MatrixFlyweightFactory<T, defval> mtx_fly_factory;	
 public:
-	using iterator = typename map<tuple<unsigned, unsigned>, T>::iterator;
-	//// Helper classes
-	
-
 	friend class MatrixIterator<T, defval>;
 	friend class MatrixValueProxy<T, defval>;
+	using iterator = typename map<tuple<unsigned, unsigned>, T>::iterator;
 	using CurIterator = MatrixIterator<T, defval>;
 	using ValueProxyType = MatrixValueProxy<T, defval>;
 
@@ -236,9 +159,6 @@ public:
 			return MatrixValueProxy<T, defval>{ parent, row, col, };
 		}
 	};
-	//// end Helper classes
-
-	constexpr static decltype(defval) def_value = defval;
 
 	Matrix() : mtx_fly_factory{ this } {}
 
