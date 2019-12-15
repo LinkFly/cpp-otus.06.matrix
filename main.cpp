@@ -17,7 +17,7 @@ int main() {
 	/* (trivial checking code see in tests) */
 
 	/* При запуске программы необходимо создать матрицу с пустым значением 0 */
-	Matrix<int, 0> m;
+	Matrix<int, 0> m{};
 
 	const int N = 10;
 	auto half_side = N / 2;
