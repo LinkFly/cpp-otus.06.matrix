@@ -62,7 +62,7 @@ bool forloop_test() {
 		m(1, 0) = 2;
 		m(3, 4) = 3;
 		auto res = 0;
-		for (auto& x : m) {
+		for (auto x : m) {
 			res += std::get<1>(x);
 		}
 		return res == 6;

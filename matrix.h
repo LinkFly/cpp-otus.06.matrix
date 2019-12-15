@@ -15,9 +15,9 @@ class Matrix;
 
 template<typename T, T defval>
 class MatrixValueProxy {
+	Matrix<T, defval>* parent;
 	unsigned row;
 	unsigned col;
-	Matrix<T, defval>* parent;
 public:
 	MatrixValueProxy(Matrix<T, defval>* parent, unsigned row, unsigned col) :
 		parent{ parent }, row{ row }, col{ col } {}
