@@ -55,7 +55,7 @@ struct MatrixFlyweightFactory {
 	MapProxies data;
 public:
 	MatrixFlyweightFactory(Matrix<T, defval>* parent) : parent{ parent } {}
-	MatrixValueProxy<T, defval>& get(Key& key) {
+	MatrixValueProxy<T, defval>& get(const Key& key) {
 		auto it = data.find(key);
 		if (it != data.end()) {
 			return *it->second;
@@ -188,6 +188,7 @@ private:
 	ValueProxyType get_val_proxy(unsigned row_idx, unsigned col_idx) {
 		return mtx_fly_factory.get(tuple{ row_idx, col_idx });
 	}
+	// O(n) = log(size())
 	T get(unsigned row_idx, unsigned col_idx) {
 		auto it = data.find(tuple{ row_idx, col_idx });
 		if (it != data.end()) {
@@ -195,6 +196,7 @@ private:
 		}
 		return defval;
 	}
+	// O(n) = log(size())
 	void add(unsigned row_idx, unsigned col_idx, const T& elt) {
 		auto it = data.find(tuple{ row_idx, col_idx });
 		if (it != data.end()) {
